@@ -1,7 +1,7 @@
 from accessible_output2.outputs import auto
 from webbrowser import open as wopen
 from sys import exit
-import update
+# import update
 from threading import Thread
 import gw
 o=auto.Auto()
@@ -59,6 +59,5 @@ def command(cmd):
 				return ("openning in browser")
 				wopen("https://r1oaz.ru/deniz/gw/changelog.html")
 			case "/update":
-				update.check()
 				return ("no updates")
 	except Exception as e:return (e)

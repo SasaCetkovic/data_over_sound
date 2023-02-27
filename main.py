@@ -42,7 +42,7 @@ class Wnd(wx.Frame):
 
 if __name__ == "__main__":
 	app = wx.App(False)
-	receiver.update.check()
+	# receiver.update.check()
 	frame = Wnd()
 	t=Thread(target=frame.loop,daemon=True)
 	t.start()
