@@ -38,15 +38,15 @@ def command(cmd):
 				if int(c[1])<0 or int(c[1])>11:
 					return ("specify protocol between 0 and 11")
 				g.protocol=int(c[1])
-				return ("protocol set to ",g.protocol)
+				toreturn=f"protocol set to {str(g.protocol)}. "
 				if len(c)>2:
 					if c[2]=="-":
 						g.switchinstance(False,-1)
-						return ""
+						return toreturn
 					if int(c[2])<4 or int(c[2])>64:
 						return ("invalid payload length. it must be between 4 and 64")
-					g.switchinstance(False,int(c[2]))
-					return ("payload length "+str(c[2]))
+					g.switchinstance(False, int(c[2]))
+					return toreturn+(" payload length "+str(c[2]))
 				else:
 					if int(c[1])>8:
 						return ("protocols 9 to 11 needs a payload length. specify a length after the protocol number")

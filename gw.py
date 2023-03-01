@@ -76,13 +76,13 @@ class GW:
 		if start:self.start()
 
 	def switchinstance(self, r=False, leng=-1):
-		if leng is None or r==self.recving:return
 		self.recving=r
 		ggwave.free(self.instance)
 		if r:
 			self.instance=ggwave.init(self.filepars)
 		else:
 			if leng is not None:self.pars["payloadLength"]=leng
+
 			self.instance=ggwave.init(self.pars)
 
 	def receive(self,recvtime=10,wait=0):
@@ -96,7 +96,9 @@ class GW:
 			return ...
 		self.stop()
 		if wait>0:sleep(wait)
-		return qq.get()
+		r=qq.get()
+		qq.task_done()
+		return r
 
 
 	def sendfilethr(self,filename):
@@ -119,7 +121,7 @@ class GW:
 			unheard=""
 			count=0
 			while unheard=="" and count<3:
-				self.send("finish")
+				self.send("EOF")
 				self.sendwait()
 				unheard=self.receive(10,slp)
 				if unheard=="":return

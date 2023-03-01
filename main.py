@@ -17,10 +17,10 @@ class Wnd(wx.Frame):
 
 		filemenu=wx.Menu()
 		sendafile=filemenu.Append(wx.ID_ANY, "Send a &file"," Sends a file via sound")
-		self.Bind(wx.EVT_MENU, sendafile, sendfile)
+		self.Bind(wx.EVT_MENU, self.sendfile, sendafile)
 
 		dostop=filemenu.Append(wx.ID_ANY, "&Stop transmittion"," emergency stop!")
-		self.Bind(wx.EVT_MENU, estop, dostop)
+		self.Bind(wx.EVT_MENU, self.estop, dostop)
 
 		protmenu=wx.Menu()
 
