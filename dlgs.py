@@ -1,14 +1,19 @@
 import wx
-app = wx.App()
-frame = wx.Frame(None, -1,"win.py")
-frame.SetSize	(0,0,200,50)
+# app = wx.App()
+# frame = wx.Frame(None, -1,"win.py")
+# frame.SetSize	(0,0,200,50)
 
 progress=None
 
 def onButton(event):
 	print("Button pressed.")
 
-def inputbox(header,msg,defaultval):
+def msgbox(message, window):
+	dlg = wx.MessageDialog(window, message)
+	wx.OK	
+	dlg.ShowModal()
+
+def inputbox(frame, header, msg, defaultval):
 	val=""
 	# Create text input
 	dlg = wx.TextEntryDialog(frame, header,msg)
@@ -19,14 +24,14 @@ def inputbox(header,msg,defaultval):
 	dlg.Destroy()
 	return val
 
-def progressstart(header, message, max=100):
+def progressstart(frame, header, message, max=100):
 	global progress
-	progress = wx.ProgressDialog(header, message, maximum=max, style = wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|wx.PD_ESTIMATED_TIME|wx.PD_REMAINING_TIME)
+	progress = wx.ProgressDialog(header, message, maximum=max, parent=frame, style = wx.PD_CAN_ABORT|wx.PD_AUTO_HIDE|wx.PD_ELAPSED_TIME|wx.PD_ESTIMATED_TIME|wx.PD_REMAINING_TIME)
 
 def progressset(per,txt=""):
 	global progress
-	progress.Update(per,txt)
-	return progress.WasCancelled()
+	if progress==None:return None
+	return progress.Update(per,txt)
 
 def progressclose():
 	global progress

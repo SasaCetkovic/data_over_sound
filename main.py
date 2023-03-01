@@ -1,6 +1,7 @@
 import wx
 import receiver
 from threading import Thread
+import dlgs
 
 class Wnd(wx.Frame):
 	def __init__(self):
@@ -15,8 +16,17 @@ class Wnd(wx.Frame):
 		panel.SetSizer(sizer)
 
 		filemenu=wx.Menu()
+		sendafile=filemenu.Append(wx.ID_ANY, "Send a &file"," Sends a file via sound")
+		self.Bind(wx.EVT_MENU, sendafile, sendfile)
+
+		dostop=filemenu.Append(wx.ID_ANY, "&Stop transmittion"," emergency stop!")
+		self.Bind(wx.EVT_MENU, estop, dostop)
+
+		protmenu=wx.Menu()
+
+		filemenu.AppendMenu(wx.ID_ANY, "select transmittion protocol", protmenu)
 		filemenu.Append(wx.ID_ABOUT, "&About"," Information about this program")
-		filemenu.AppendSeparator()
+		#filemenu.AppendSeparator()
 		filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")
 		self.Bind(wx.EVT_MENU, exit, id=wx.ID_EXIT)
 		menuBar = wx.MenuBar()
@@ -24,11 +34,29 @@ class Wnd(wx.Frame):
 		self.SetMenuBar(menuBar)
 		self.Show()
 
-	def enter(self,event):
+	def enter(self, event):
 		ms= str(self.title.GetValue())
 		receiver.speak(str(receiver.command(ms)))
 		self.title.SetValue("")
-		self.text.write("me: "+ms+"\n")
+		self.text.write(f"me: {ms}\n")
+
+	def sendfile(self, event):
+		ms= str(self.title.GetValue())
+		speak(str(receiver.command(ms)))
+		self.text.write(f"sent file: {ms}\n")
+
+	def estop(self, event):
+		receiver.command("/stop")
+		speak("stopping!")
+
+	def protocol(self, event):
+		pass
+
+	def speak(self, message):
+		if message.startswith("!"):
+			dlgs.msgbox(message[1:], self)
+		else:
+			receiver.speak(message[1:])
 
 	def loop(self):
 		while True:
