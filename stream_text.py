@@ -22,12 +22,12 @@ def smartsplit(text):
         if len(current_chunk.encode("utf-8")) >= 64:
             if sep_idx > -1:  # if we have a separator, split there
                 chunks.append(current_chunk[:sep_idx])
-                current_chunk = current_chunk[sep_idx + 1:].lstrip()  # dont care about the space
+                current_chunk = current_chunk[sep_idx:].lstrip()  # dont care about the space
                 sep_idx = -1
                 space_idx = -1  # we fresh start from the new chunk
             elif space_idx != -1:
                 chunks.append(current_chunk[:space_idx])
-                current_chunk = current_chunk[space_idx + 1:]
+                current_chunk = current_chunk[space_idx:]
                 sep_idx = -1
                 space_idx = -1
             else:  # ok, lets corrupt the data
