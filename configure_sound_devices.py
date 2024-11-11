@@ -28,11 +28,13 @@ def testoutput():
 	global samplerate
 	while True:
 		for d in s:
-			if d["max_output_channels"]==0:continue
+			if d["max_output_channels"]==0:
+				continue
 			samplerate=d['default_samplerate']
 			try:
 				with sd.OutputStream(device=d["index"], channels=1, callback=sinecallback,samplerate=samplerate):
-					if "y" in input("this is "+d["name"]+" is playing sound. if you prefer this device, and you here the sound, type y, otherwise just press enter"):return d["index"]
+					if "y" in input("this is "+d["name"]+" is playing sound. if you prefer this device, and you here the sound, type y, otherwise just press enter"):
+						return d["index"]
 			except Exception as e:
 				print("error openning ",d["name"],e)
 				input("press enter")
@@ -55,9 +57,11 @@ def testinput():
 
 def test():
 	global devs
-	devs[0]=testoutput()
-	devs[1]=testinput()
-	with open("devices.json","w",encoding="UTF-8") as f:f.write(json.dumps(devs))
+	devs[1]=testoutput()
+	devs[0]=testinput()
+	with open("devices.json","w",encoding="UTF-8") as f:
+		f.write(json.dumps(devs))
 
-if not exists("devices.json"):test()
+if not exists("devices.json"):
+	test()
 with open("devices.json",encoding="UTF-8") as f:devs=json.loads(f.read())

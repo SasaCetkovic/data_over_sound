@@ -1,1 +1,1 @@
-py -3.10 -m pyinstaller receiver.spec
+pyinstaller receiver.spec
