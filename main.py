@@ -74,8 +74,9 @@ def command(cmd):
                 g.stop()
                 exit()
             case "/device":
-                gw.configure_sound_devices.test()
-                input("!Program must be restarted. Press enter to exit")
+                os.remove("devices.json")
+                input("!Press enter and restart the program. It will start with the device test prompt.")
+                g.stop()
                 exit()
             case "/help":
                 return help
