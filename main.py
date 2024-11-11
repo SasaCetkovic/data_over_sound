@@ -1,14 +1,27 @@
 import gw
+import parse
+from webbrowser import open as wopen
+import os
 
-def data_callback(data):
-    print(data)
+class Output:
+    def __init__(self):
+        self.data = ""
 
-g=gw.GW(data_callback)
+    def data_callback(self, data):
+        self.data = data
+        print(data)
+
+    def parse(self):
+        return parse.extract_info(self.data)
+
+output = Output()
+g=gw.GW(output.data_callback)
 g.start()
 
 help = """
 /p [protocol number] [payload length] - set protocol and payload length. payload length is optional and must be between 4 and 64. It is only required for protocols 9 to 11 but can be set for all protocols
 /reset - reset the instance. If data starts to get corrupted, this command can be used to reset the instance
+/open - open URLs, emails, and phone numbers in the default web browser, email client, and phone dialer respectively. Use this command if a url, email, or phone number is received. Use it on your own risk, as it may open malicious websites
 /stop - stop the program (not working properly, use ctrl+c instead)
 /exit - exit the program
 /device - test sound devices
@@ -45,6 +58,16 @@ def command(cmd):
             case "/reset":  # if data starts to get corrupted, this command can be used to reset the instance
                 g.switchinstance(-1)
                 return ("instance reset")
+            case "/open":
+                result = output.parse()
+                for url in result["urls"]:
+                    wopen(url)
+                for email in result["emails"]:
+                    wopen("mailto:"+email)
+                for phone in result["phones"]:
+                    wopen("tel:"+phone)
+                return "opening"
+
             case "/stop":
                 g.stopcondition=True
             case "/exit":
@@ -63,6 +86,10 @@ def command(cmd):
     except Exception as e:
         return (e)
 
-while True:
-    cmd=input(">")
-    print(command(cmd))
+try:
+    while True:
+        cmd=input(">")
+        print(command(cmd))
+except KeyboardInterrupt:
+    g.stop()
+    exit()
