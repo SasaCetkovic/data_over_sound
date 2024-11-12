@@ -5,6 +5,8 @@ A Python program for transmitting and receiving data over sound waves using only
 ## Description
 
 Data over Sound is a Python program that allows you to transmit and receive data between two devices using only a speaker and a microphone. This is especially useful when you don't have a network connection or a USB cable to transfer data between devices.
+Please note that this program is not intended for high-speed data transfer, but rather for small amounts of data. It can transfer 8 to 16 bytes of data per second, depending on the protocol used, so this program is best suited for transferring text messages, URLs, phone numbers, payment credentials and other small pieces of data.
+
 
 ## How It Works
 
@@ -23,17 +25,24 @@ set GGWAVE_USE_CYTHON=1
 
 ### Steps
 
-1. **Install dependencies**:
+- **Install dependencies and run**:
     ```bash
     pip install -r requirements.txt
+    python3 main.py
     ```
+- ** or through poetry**:
+    ```bash
+    poetry install
+    poetry run python3 main.py
+    ```
+  
+It's recommended for unix users to use a virtual environment to avoid conflicts, but on your own risk you can just pip install the requirements.
 
-2. **Compile** (optional):
-   - For **Windows**, run `compile.bat` or use the other platforms command below.
-   - On other platforms, use:
-     ```bash
-     pyinstaller receiver.spec
-     ```
+To compile the project, you need to have pyinstaller installed. After that, you can run the following command to compile the project. Note that windows users should set the same environment variable as mentioned above before running the command.
+
+```bash
+pyinstaller main.spec
+```
 
 ## Usage
 

@@ -2,6 +2,7 @@ import gw
 import parse
 from webbrowser import open as wopen
 import os
+from sys import exit  # stupid pyinstaller bug, it doesn't work without this line
 
 class Output:
     def __init__(self):
