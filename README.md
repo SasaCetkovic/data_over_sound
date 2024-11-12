@@ -30,7 +30,7 @@ set GGWAVE_USE_CYTHON=1
     pip install -r requirements.txt
     python3 main.py
     ```
-- ** or through poetry**:
+- ** or through poetry** (not working on windows):
     ```bash
     poetry install
     poetry run python3 main.py

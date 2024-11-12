@@ -4,11 +4,12 @@ version = "0.1.0"
 description = "This is a program to send small pieces of data using sound waves between airgaped devices"
 authors = ["deniz <deniz@r1oaz.ru>"]
 readme = "README.md"
+#package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
-ggwave = "^0.4.2"
-
+ggwave = {version = "^0.4.2"}
+numpy = "^2.1.3"
 
 [build-system]
 requires = ["poetry-core"]
