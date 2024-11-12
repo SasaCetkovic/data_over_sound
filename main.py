@@ -89,9 +89,12 @@ def command(cmd):
         return (e)
 
 try:
+    print("Welcome to data_over_sound")
+    print("Type /help for help")
+    print("enter your message or command:")
     while True:
-        cmd=input(">")
+        cmd=input()  # don't show > prompt because it prints something else in another thread
         print(command(cmd))
-except KeyboardInterrupt:
+except (KeyboardInterrupt, EOFError):
     g.stop()
     exit()

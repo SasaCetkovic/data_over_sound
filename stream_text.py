@@ -11,7 +11,7 @@ def smartsplit(text):
         words = line.split()
         for word in words:
             hypothesis = current_chunk + " " + word
-            if len(hypothesis.encode("UTF-8")) >= 64:
+            if len(hypothesis.encode("UTF-8")) >= 140:
                 chunks.append(current_chunk)
                 current_chunk = word
             else:
@@ -26,7 +26,7 @@ def smartsplit(text):
 
 def make_wave(text, *args, **kwargs):  # args and kwargs are passed to ggwave.encode
     chunks = smartsplit(text)
-    pause = seg.silent(duration=1000)
+    pause = seg.silent(duration=300)
     wave = seg.empty()
     first = True
     for chunk in chunks:
