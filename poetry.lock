@@ -1,0 +1,15 @@
+[[package]]
+name = "ggwave"
+version = "0.4.2"
+description = "Tiny data-over-sound library."
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.10"
+content-hash = "4cfeefd0a8385e30ebd1f20745e2c508c101bbf423594c8b88ca3de4afea8c7f"
+
+[metadata.files]
+ggwave = []

@@ -1,2 +1,0 @@
-title ebash
-cmd
