@@ -50,6 +50,8 @@ def testoutput():
             except Exception as e:
                 print("error openning ", d["name"], e)
                 input("press enter")
+            except KeyboardInterrupt:
+                exit()
         input("no sounddevice selected. press enter to loop over")
 
 
@@ -76,6 +78,8 @@ def testinput():
                         + " is playing sound. if you prefer this device, and you here the sound, type y, otherwise just press enter"
                     ):
                         return d["index"]
+            except KeyboardInterrupt:
+                exit()
             except Exception as e:
                 print("error openning ", d["name"], e)
                 input("press enter")

@@ -2,3 +2,4 @@ ggwave
 sounddevice
 numpy
 cython
+rust_enum
