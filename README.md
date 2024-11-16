@@ -23,6 +23,19 @@ On **Windows**, ensure you set an environment variable to avoid installation iss
 set GGWAVE_USE_CYTHON=1
 ```
 
+### Note:
+
+The last version of my program works only with ggwave that I've modified and pull-requested to the original repository. This will be fixed when the pull request is accepted. Until then,
+you need to install it from my forked repository.
+Also you need to have `make` installed on your system to build the library.
+
+```bash
+git clone https://github.com/denizsincar29/ggwave
+cd ggwave/bindings/python
+make build
+pip install .
+```
+
 ### Steps
 
 - **Install dependencies and run**:
