@@ -21,10 +21,9 @@ class GW:
         self.callback_function = callback_function
         self.protocol = 2
         self.pars = ggwave.getDefaultParameters()
-        # for variable-length protocols, payloadLength should not be set.
-        # let's remove it to be safe, it will be added back by switchinstance if needed for fixed-length protocols
-        if 'payloadLength' in self.pars:
-            del self.pars['payloadLength']
+        # For variable-length protocols, we can set payloadLength to a large value.
+        # The max seems to be 140.
+        self.pars['payloadLength'] = 140
         for k, v in kwargs.items():
             self.pars[k] = v
         self.instance = ggwave.init(self.pars)
@@ -81,8 +80,7 @@ class GW:
         ggwave.free(self.instance)
         if leng is not None:
             if leng == -1:
-                if 'payloadLength' in self.pars:
-                    del self.pars['payloadLength']
+                self.pars['payloadLength'] = 140
             else:
                 self.pars["payloadLength"] = leng
         self.instance = ggwave.init(self.pars)
