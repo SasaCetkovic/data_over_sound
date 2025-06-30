@@ -82,10 +82,10 @@ class GW:
         full_waveform = bytearray()
         for data in data_list:
             # ggwave.encode seems to require a string.
-            # Control messages (headers/footers) are sent as is (decoded as utf-8).
-            # Data chunks are base64-encoded to ensure they are valid strings
-            # and to prevent corruption of binary data.
-            if data.startswith((b'$$$$', b'FEND', b'TEND')):
+            # Footers are sent as plain text.
+            # Headers and data chunks are base64-encoded to ensure they are valid strings
+            # and to prevent corruption of binary data (like file size in the header).
+            if data in (b'FEND$$$$', b'TEND$$$$'):
                 payload = data.decode('utf-8')
             else:
                 payload = base64.b64encode(data).decode('ascii')

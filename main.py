@@ -19,25 +19,16 @@ class Output:
         self.text_size = 0
 
     def data_callback(self, data):
-        if isinstance(data, bytes):
-            if data.startswith(b'$$$$FILE'):
-                self.receiving_file = True
-                self.file_chunks = []
-                try:
-                    self.file_size = int.from_bytes(data[8:12], 'big')
-                    self.file_name = data[12:].decode("utf-8")
-                    print(f"Receiving file: {self.file_name} ({self.file_size} bytes)")
-                except Exception as e:
-                    print(f"Error parsing file header: {e}")
-                    self.receiving_file = False
-                return
+        if not isinstance(data, bytes):
+            return
 
-            if data.startswith(b'FEND$$$$'):
+        # If we are in a transfer, the data must be a chunk (base64) or a footer (cleartext).
+        if self.receiving_file:
+            if data == b'FEND$$$$':
                 if not self.receiving_file:
                     return # ignore stray FEND
                 print("File transfer finished.")
                 self.receiving_file = False
-                
                 match chunker.dechunk(self.file_chunks):
                     case chunker.Result.Ok(file_data):
                         # check if recs directory exists
@@ -51,35 +42,23 @@ class Output:
                         print(f"File reconstruction failed. Missing chunks: {failed}")
                 self.file_chunks = []
                 return
+            
+            try:
+                decoded_data = base64.b64decode(data)
+                self.file_chunks.append(decoded_data)
+                num_chunks = int.from_bytes(decoded_data[2:4], 'big')
+                chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
+                print(f"Received chunk {chunk_idx + 1}/{num_chunks}")
+            except (IndexError, ValueError, base64.binascii.Error):
+                print("Received malformed file chunk.")
+            return
 
-            if self.receiving_file:
-                try:
-                    decoded_data = base64.b64decode(data)
-                    self.file_chunks.append(decoded_data)
-                    num_chunks = int.from_bytes(decoded_data[2:4], 'big')
-                    chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
-                    print(f"Received chunk {chunk_idx + 1}/{num_chunks}")
-                except (IndexError, ValueError, base64.binascii.Error):
-                    print("Received malformed file chunk.")
-                return
-
-            if data.startswith(b'$$$$TEXT'):
-                self.receiving_text = True
-                self.text_chunks = []
-                try:
-                    self.text_size = int.from_bytes(data[8:12], 'big')
-                    print(f"Receiving text ({self.text_size} bytes)")
-                except Exception as e:
-                    print(f"Error parsing text header: {e}")
-                    self.receiving_text = False
-                return
-
-            if data.startswith(b'TEND$$$$'):
+        if self.receiving_text:
+            if data == b'TEND$$$$':
                 if not self.receiving_text:
                     return # ignore stray TEND
                 print("Text transfer finished.")
                 self.receiving_text = False
-                
                 match chunker.dechunk(self.text_chunks):
                     case chunker.Result.Ok(text_data):
                         print("Received text:")
@@ -89,23 +68,55 @@ class Output:
                 self.text_chunks = []
                 return
 
-            if self.receiving_text:
+            try:
+                decoded_data = base64.b64decode(data)
+                self.text_chunks.append(decoded_data)
+                num_chunks = int.from_bytes(decoded_data[2:4], 'big')
+                chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
+                print(f"Received text chunk {chunk_idx + 1}/{num_chunks}")
+            except (IndexError, ValueError, base64.binascii.Error):
+                print("Received malformed text chunk.")
+            return
+
+        # Not in a transfer. Could be a header (base64) or a simple message.
+        try:
+            decoded_data = base64.b64decode(data)
+
+            if decoded_data.startswith(b'$$$$FILE'):
+                self.receiving_file = True
+                self.file_chunks = []
                 try:
-                    decoded_data = base64.b64decode(data)
-                    self.text_chunks.append(decoded_data)
-                    num_chunks = int.from_bytes(decoded_data[2:4], 'big')
-                    chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
-                    print(f"Received text chunk {chunk_idx + 1}/{num_chunks}")
-                except (IndexError, ValueError, base64.binascii.Error):
-                    print("Received malformed text chunk.")
+                    self.file_size = int.from_bytes(decoded_data[8:12], 'big')
+                    self.file_name = decoded_data[12:].decode("utf-8")
+                    print(f"Receiving file: {self.file_name} ({self.file_size} bytes)")
+                except Exception as e:
+                    print(f"Error parsing file header: {e}")
+                    self.receiving_file = False
                 return
 
-        # If not file data, treat as regular message
+            if decoded_data.startswith(b'$$$$TEXT'):
+                self.receiving_text = True
+                self.text_chunks = []
+                try:
+                    self.text_size = int.from_bytes(decoded_data[8:12], 'big')
+                    print(f"Receiving text ({self.text_size} bytes)")
+                except Exception as e:
+                    print(f"Error parsing text header: {e}")
+                    self.receiving_text = False
+                return
+            
+            # It was base64, but not a header. Treat as a simple message.
+            data = decoded_data
+            
+        except base64.binascii.Error:
+            # Not base64, so it's a simple message.
+            pass
+
+        # Handle as a simple message
         try:
-            # data is always bytes here. Try to decode as a regular text message.
-            decoded_data = data.decode('utf-8').replace("\x00", "")
-            self.data = decoded_data
-            print(decoded_data)
+            decoded_text = data.decode('utf-8').replace("\x00", "")
+            self.data = decoded_text
+            print(decoded_text)
         except (UnicodeDecodeError, AttributeError):
             # This can happen with noise or corrupted data.
             # The original code did str(data), which would show b'...'.
