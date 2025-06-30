@@ -10,38 +10,24 @@ class Result:
     Ok = Case(value = bytearray)
     Err = Case(value = list[int])  # list of indices that failed
 
-def chunk_by_idx(file, chunk_size, chunk_idcs=None):
-    file_size = os.path.getsize(file)
-    num_chunks = ceil(file_size / chunk_size)  # stupid python doesn't have // that divides and rounds to the upper integer
-    with open(file, 'rb') as f:
-        if chunk_idcs is None:  # don't do this, use
-            yield from chunk(file, chunk_size, called_from_chunk_by_idx=True)
-            return # don't do the following
-        for i in chunk_idcs:
-            f.seek(i * chunk_size)
-            # yield first 2 bytes as chunk index, second 2 bytes as total number of chunks, then the chunk
-            yield i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + f.read(chunk_size)
-
 # lets make an optimized version that yields all chunks without specifying indices
-def chunk(file, chunk_size, called_from_chunk_by_idx=False, max_payload=140):
+def chunk(file, chunk_size, max_payload=140):
     file_size = os.path.getsize(file)
     num_chunks = ceil(file_size / chunk_size)
-    # if not called from chunk_by_idx, yield the metadata
     # metadata: b'$$$$FILE' header, 4 bytes for file size, rest of the bytes for the file name
-    if not called_from_chunk_by_idx:
-        filename = os.path.basename(file)
-        filename_bytes = filename.encode("utf-8") if isinstance(filename, str) else filename
-        
-        header = b'$$$$FILE' + file_size.to_bytes(4, 'big')
-        available_for_filename = max_payload - len(header)
-        if available_for_filename < 0:
-            raise ValueError(f"Cannot send file, metadata packet is too large for payload size {max_payload}")
-        
-        if len(filename_bytes) > available_for_filename:
-            # truncate filename
-            filename_bytes = filename_bytes[:available_for_filename]
+    filename = os.path.basename(file)
+    filename_bytes = filename.encode("utf-8") if isinstance(filename, str) else filename
+    
+    header = b'$$$$FILE' + file_size.to_bytes(4, 'big')
+    available_for_filename = max_payload - len(header)
+    if available_for_filename < 0:
+        raise ValueError(f"Cannot send file, metadata packet is too large for payload size {max_payload}")
+    
+    if len(filename_bytes) > available_for_filename:
+        # truncate filename
+        filename_bytes = filename_bytes[:available_for_filename]
 
-        yield header + filename_bytes
+    yield header + filename_bytes
     with open(file, 'rb') as f:
         for i, chunk_data in enumerate(iter(lambda: f.read(chunk_size), b'')): # read until EOF
             chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
@@ -50,12 +36,11 @@ def chunk(file, chunk_size, called_from_chunk_by_idx=False, max_payload=140):
                 # but as a safeguard:
                 raise ValueError(f"Data chunk is too large for payload size {max_payload}")
             yield chunk
-    # if not called from chunk_by_idx, yield the FEND$$$$ footer to not make the receiver wait 30 seconds for the next chunk
-    if not called_from_chunk_by_idx:
-        footer = b'FEND$$$$'
-        if len(footer) > max_payload:
-            raise ValueError(f"Cannot send file, footer packet is too large for payload size {max_payload}")
-        yield footer
+    # yield the FEND$$$$ footer to not make the receiver wait 30 seconds for the next chunk
+    footer = b'FEND$$$$'
+    if len(footer) > max_payload:
+        raise ValueError(f"Cannot send file, footer packet is too large for payload size {max_payload}")
+    yield footer
 
 
 def chunk_text(text: str, chunk_size: int, max_payload: int):
