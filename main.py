@@ -41,7 +41,7 @@ class Output:
                         # check if recs directory exists
                         if not os.path.exists("recs"):
                             os.makedirs("recs")
-                        filepath = os.path.join("recs", self.file_name)
+                        filepath = os.path.join("recs", os.path.basename(self.file_name))
                         with open(filepath, "wb") as f:
                             f.write(file_data)
                         print(f"File saved to {filepath}")

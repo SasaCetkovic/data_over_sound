@@ -29,7 +29,9 @@ def chunk(file, chunk_size, called_from_chunk_by_idx=False):
     # if not called from chunk_by_idx, yield the metadata
     # metadata: b'$$$$FILE' header, 4 bytes for file size, rest of the bytes for the file name
     if not called_from_chunk_by_idx:
-        yield b'$$$$FILE' + file_size.to_bytes(4, 'big') + file.encode("utf-8")  # well, if only filename won't be longer than chunksize-12!
+        filename = os.path.basename(file)
+        filename_bytes = filename.encode("utf-8") if isinstance(filename, str) else filename
+        yield b'$$$$FILE' + file_size.to_bytes(4, 'big') + filename_bytes  # well, if only filename won't be longer than chunksize-12!
     with open(file, 'rb') as f:
         for i, chunk in enumerate(iter(lambda: f.read(chunk_size), b'')): # read until EOF
             yield i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk  # don't think that a chunk index will ever be >65536, or it will transfer a file for >1 week
