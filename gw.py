@@ -65,11 +65,8 @@ class GW:
         self.stream.stop()
 
     def send(self, data):
-        to_send = data
-        if isinstance(data, bytes):
-            to_send = data.decode('latin-1')
         wf = np.frombuffer(
-            ggwave.encode(to_send, protocolId=self.protocol, instance=self.instance),
+            ggwave.encode(data, protocolId=self.protocol, instance=self.instance),
             dtype="float32",
         )
         # put the data in the queue but framesize by framesize
