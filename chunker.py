@@ -16,7 +16,7 @@ def chunk(file, chunk_size, max_payload=140):
     num_chunks = ceil(file_size / chunk_size)
     # metadata: b'$$$$FILE' header, 4 bytes for file size, rest of the bytes for the file name
     filename = os.path.basename(file)
-    filename_bytes = filename.encode("utf-8") if isinstance(filename, str) else filename
+    filename_bytes = filename.encode("utf-8")
     
     header = b'$$$$FILE' + file_size.to_bytes(4, 'big')
     available_for_filename = max_payload - len(header)
