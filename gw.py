@@ -80,12 +80,10 @@ class GW:
     def send_many(self, data_list):
         full_waveform = bytearray()
         for data in data_list:
-            # ggwave.encode seems to expect a string. To send raw bytes from chunks,
-            # we decode them into a 'latin-1' string. This provides a 1-to-1
-            # mapping from byte values to Unicode code points, safely passing
-            # binary data through the string-only interface.
+            # ggwave.encode can handle bytes directly. Using .decode('latin-1')
+            # was causing corruption with binary data.
             full_waveform.extend(
-                ggwave.encode(data.decode('latin-1'), protocolId=self.protocol, instance=self.instance)
+                ggwave.encode(data, protocolId=self.protocol, instance=self.instance)
             )
         
         wf = np.frombuffer(full_waveform, dtype="float32")
