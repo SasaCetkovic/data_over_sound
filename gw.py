@@ -78,9 +78,13 @@ class GW:
         for i in range(0, len(wf), frames):
             self.sendqueue.put(wf[i : i + frames])
 
-    def send_many(self, data_list):
+    def send_many(self, data_list, gap_ms=100):
+        """Send multiple data packets with optional gaps between them for better reliability"""
         full_waveform = bytearray()
-        for data in data_list:
+        gap_samples = int(rate * gap_ms / 1000)  # Convert ms to samples
+        silence = np.zeros(gap_samples, dtype=np.float32).tobytes()
+        
+        for i, data in enumerate(data_list):
             # ggwave.encode seems to require a string.
             # Footers are sent as plain text.
             # Headers and data chunks are base64-encoded to ensure they are valid strings
@@ -93,6 +97,10 @@ class GW:
             full_waveform.extend(
                 ggwave.encode(payload, protocolId=self.protocol, instance=self.instance)
             )
+            
+            # Add gap between chunks (except after the last one)
+            if i < len(data_list) - 1:
+                full_waveform.extend(silence)
         
         wf = np.frombuffer(full_waveform, dtype="float32")
         

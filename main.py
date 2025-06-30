@@ -6,6 +6,8 @@ from sys import exit  # stupid pyinstaller bug, it doesn't work without this lin
 import chunker
 import math
 import base64
+import time
+import threading
 
 class Output:
     def __init__(self):
@@ -17,6 +19,28 @@ class Output:
         self.receiving_text = False
         self.text_chunks = []
         self.text_size = 0
+        self.transfer_timeout = 30  # seconds
+        self.last_chunk_time = None
+        self.timeout_timer = None
+
+    def _reset_timeout_timer(self):
+        """Reset the timeout timer for transfers"""
+        if self.timeout_timer:
+            self.timeout_timer.cancel()
+        self.timeout_timer = threading.Timer(self.transfer_timeout, self._handle_timeout)
+        self.timeout_timer.start()
+        self.last_chunk_time = time.time()
+
+    def _handle_timeout(self):
+        """Handle transfer timeout"""
+        if self.receiving_file:
+            print(f"File transfer timed out after {self.transfer_timeout} seconds")
+            self.receiving_file = False
+            self.file_chunks = []
+        elif self.receiving_text:
+            print(f"Text transfer timed out after {self.transfer_timeout} seconds")
+            self.receiving_text = False
+            self.text_chunks = []
 
     def data_callback(self, data):
         if not isinstance(data, bytes):
@@ -29,6 +53,8 @@ class Output:
                     return # ignore stray FEND
                 print("File transfer finished.")
                 self.receiving_file = False
+                if self.timeout_timer:
+                    self.timeout_timer.cancel()
                 match chunker.dechunk(self.file_chunks):
                     case chunker.Result.Ok(file_data):
                         # check if recs directory exists
@@ -49,6 +75,7 @@ class Output:
                 num_chunks = int.from_bytes(decoded_data[2:4], 'big')
                 chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
                 print(f"Received chunk {chunk_idx + 1}/{num_chunks}")
+                self._reset_timeout_timer()  # Reset timeout on successful chunk
             except (IndexError, ValueError, base64.binascii.Error):
                 print("Received malformed file chunk.")
             return
@@ -59,6 +86,8 @@ class Output:
                     return # ignore stray TEND
                 print("Text transfer finished.")
                 self.receiving_text = False
+                if self.timeout_timer:
+                    self.timeout_timer.cancel()
                 match chunker.dechunk(self.text_chunks):
                     case chunker.Result.Ok(text_data):
                         print("Received text:")
@@ -74,6 +103,7 @@ class Output:
                 num_chunks = int.from_bytes(decoded_data[2:4], 'big')
                 chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
                 print(f"Received text chunk {chunk_idx + 1}/{num_chunks}")
+                self._reset_timeout_timer()  # Reset timeout on successful chunk
             except (IndexError, ValueError, base64.binascii.Error):
                 print("Received malformed text chunk.")
             return
@@ -89,6 +119,7 @@ class Output:
                     self.file_size = int.from_bytes(decoded_data[8:12], 'big')
                     self.file_name = decoded_data[12:].decode("utf-8")
                     print(f"Receiving file: {self.file_name} ({self.file_size} bytes)")
+                    self._reset_timeout_timer()  # Start timeout for file transfer
                 except Exception as e:
                     print(f"Error parsing file header: {e}")
                     self.receiving_file = False
@@ -100,6 +131,7 @@ class Output:
                 try:
                     self.text_size = int.from_bytes(decoded_data[8:12], 'big')
                     print(f"Receiving text ({self.text_size} bytes)")
+                    self._reset_timeout_timer()  # Start timeout for text transfer
                 except Exception as e:
                     print(f"Error parsing text header: {e}")
                     self.receiving_text = False
