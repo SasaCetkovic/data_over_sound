@@ -5,6 +5,7 @@ import os
 from sys import exit  # stupid pyinstaller bug, it doesn't work without this line
 import chunker
 import math
+import base64
 
 class Output:
     def __init__(self):
@@ -52,13 +53,14 @@ class Output:
                 return
 
             if self.receiving_file:
-                self.file_chunks.append(data)
                 try:
-                    num_chunks = int.from_bytes(data[2:4], 'big')
-                    chunk_idx = int.from_bytes(data[0:2], 'big')
+                    decoded_data = base64.b64decode(data)
+                    self.file_chunks.append(decoded_data)
+                    num_chunks = int.from_bytes(decoded_data[2:4], 'big')
+                    chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
                     print(f"Received chunk {chunk_idx + 1}/{num_chunks}")
-                except (IndexError, ValueError):
-                    print("Received malformed chunk.")
+                except (IndexError, ValueError, base64.binascii.Error):
+                    print("Received malformed file chunk.")
                 return
 
             if data.startswith(b'$$$$TEXT'):
@@ -88,12 +90,13 @@ class Output:
                 return
 
             if self.receiving_text:
-                self.text_chunks.append(data)
                 try:
-                    num_chunks = int.from_bytes(data[2:4], 'big')
-                    chunk_idx = int.from_bytes(data[0:2], 'big')
+                    decoded_data = base64.b64decode(data)
+                    self.text_chunks.append(decoded_data)
+                    num_chunks = int.from_bytes(decoded_data[2:4], 'big')
+                    chunk_idx = int.from_bytes(decoded_data[0:2], 'big')
                     print(f"Received text chunk {chunk_idx + 1}/{num_chunks}")
-                except (IndexError, ValueError):
+                except (IndexError, ValueError, base64.binascii.Error):
                     print("Received malformed text chunk.")
                 return
 
@@ -136,7 +139,9 @@ def command(cmd):
         if len(cmd.encode('utf-8')) > max_payload:
             print("Message is too long, sending as chunked text...")
             # chunk header is 4 bytes (idx + num_chunks).
-            chunk_size = max_payload - 4
+            # Data chunks are base64 encoded, which adds ~33% overhead.
+            # We adjust the chunk size to fit within the max_payload.
+            chunk_size = (max_payload * 3 // 4) - 4
             if chunk_size <= 0:
                 return "Payload size too small to chunk message."
             try:
@@ -190,7 +195,9 @@ def command(cmd):
                     return f"File not found: {filepath}"
                 max_payload = g.get_max_payload_size()
                 # chunk header is 4 bytes (idx + num_chunks).
-                chunk_size = max_payload - 4
+                # Data chunks are base64 encoded, which adds ~33% overhead.
+                # We adjust the chunk size to fit within the max_payload.
+                chunk_size = (max_payload * 3 // 4) - 4
                 if chunk_size <= 0:
                     return "Payload size too small to chunk file."
                 print(f"Sending file {filepath}...")

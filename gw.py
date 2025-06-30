@@ -4,6 +4,7 @@ from queue import Queue
 import numpy as np
 import ggwave
 import sounddevice as sd
+import base64
 
 # import json
 ggwave.disableLog()
@@ -80,10 +81,17 @@ class GW:
     def send_many(self, data_list):
         full_waveform = bytearray()
         for data in data_list:
-            # ggwave.encode can handle bytes directly. Using .decode('latin-1')
-            # was causing corruption with binary data.
+            # ggwave.encode seems to require a string.
+            # Control messages (headers/footers) are sent as is (decoded as utf-8).
+            # Data chunks are base64-encoded to ensure they are valid strings
+            # and to prevent corruption of binary data.
+            if data.startswith((b'$$$$', b'FEND', b'TEND')):
+                payload = data.decode('utf-8')
+            else:
+                payload = base64.b64encode(data).decode('ascii')
+
             full_waveform.extend(
-                ggwave.encode(data, protocolId=self.protocol, instance=self.instance)
+                ggwave.encode(payload, protocolId=self.protocol, instance=self.instance)
             )
         
         wf = np.frombuffer(full_waveform, dtype="float32")
