@@ -81,8 +81,9 @@ def dechunk(chunk_list):
     returns:
         Result.Ok if successful, Result.Err with a list of indices that failed
     '''
-# delete all chunks that are start/end markers for file or text transfers
-    chunk_list = [chunk for chunk in chunk_list if not chunk.startswith(b'FEND$$$$') and not chunk.startswith(b'$$$$FILE') and not chunk.startswith(b'TEND$$$$') and not chunk.startswith(b'$$$$TEXT')]
+    # The chunk_list should only contain data chunks, which have been decoded from base64.
+    # Headers and footers are handled in main.py and not added to the list.
+    # The old filtering logic was incorrect and has been removed.
     # sort the chunks by index via the first 2 bytes of the chunk
     if not chunk_list:
         return Result.Err([])

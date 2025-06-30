@@ -36,7 +36,7 @@ class Output:
                             os.makedirs("recs")
                         filepath = os.path.join("recs", os.path.basename(self.file_name))
                         with open(filepath, "wb") as f:
-                            f.write(file_data)
+                            f.write(file_data[:self.file_size])
                         print(f"File saved to {filepath}")
                     case chunker.Result.Err(failed):
                         print(f"File reconstruction failed. Missing chunks: {failed}")
@@ -62,7 +62,7 @@ class Output:
                 match chunker.dechunk(self.text_chunks):
                     case chunker.Result.Ok(text_data):
                         print("Received text:")
-                        print(text_data.decode('utf-8', errors='ignore'))
+                        print(text_data[:self.text_size].decode('utf-8', errors='ignore'))
                     case chunker.Result.Err(failed):
                         print(f"Text reconstruction failed. Missing chunks: {failed}")
                 self.text_chunks = []
