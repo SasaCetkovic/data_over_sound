@@ -3,14 +3,63 @@ import parse
 from webbrowser import open as wopen
 import os
 from sys import exit  # stupid pyinstaller bug, it doesn't work without this line
+import chunker
 
 class Output:
     def __init__(self):
         self.data = ""
+        self.receiving_file = False
+        self.file_chunks = []
+        self.file_name = ""
+        self.file_size = 0
 
     def data_callback(self, data):
-        self.data = data
-        print(data)
+        if isinstance(data, bytes):
+            if data.startswith(b'$$$$FILE'):
+                self.receiving_file = True
+                self.file_chunks = []
+                try:
+                    self.file_size = int.from_bytes(data[8:12], 'big')
+                    self.file_name = data[12:].decode("utf-8")
+                    print(f"Receiving file: {self.file_name} ({self.file_size} bytes)")
+                except Exception as e:
+                    print(f"Error parsing file header: {e}")
+                    self.receiving_file = False
+                return
+
+            if data.startswith(b'FEND$$$$'):
+                if not self.receiving_file:
+                    return # ignore stray FEND
+                print("File transfer finished.")
+                self.receiving_file = False
+                
+                match chunker.dechunk(self.file_chunks):
+                    case chunker.Result.Ok(file_data):
+                        # check if recs directory exists
+                        if not os.path.exists("recs"):
+                            os.makedirs("recs")
+                        filepath = os.path.join("recs", self.file_name)
+                        with open(filepath, "wb") as f:
+                            f.write(file_data)
+                        print(f"File saved to {filepath}")
+                    case chunker.Result.Err(failed):
+                        print(f"File reconstruction failed. Missing chunks: {failed}")
+                self.file_chunks = []
+                return
+
+            if self.receiving_file:
+                self.file_chunks.append(data)
+                try:
+                    num_chunks = int.from_bytes(data[2:4], 'big')
+                    chunk_idx = int.from_bytes(data[0:2], 'big')
+                    print(f"Received chunk {chunk_idx + 1}/{num_chunks}")
+                except (IndexError, ValueError):
+                    print("Received malformed chunk.")
+                return
+
+        # If not file data, treat as regular message
+        self.data = str(data)
+        print(self.data)
 
     def parse(self):
         return parse.extract_info(self.data)
@@ -23,6 +72,7 @@ help = """
 /p [protocol number] [payload length] - set protocol and payload length. payload length is optional and must be between 4 and 64. It is only required for protocols 9 to 11 but can be set for all protocols
 /reset - reset the instance. If data starts to get corrupted, this command can be used to reset the instance
 /open - open URLs, emails, and phone numbers in the default web browser, email client, and phone dialer respectively. Use this command if a url, email, or phone number is received. Use it on your own risk, as it may open malicious websites
+/sendfile <path> - send a file
 /stop - stop the program (not working properly, use ctrl+c instead)
 /exit - exit the program
 /device - test sound devices
@@ -68,6 +118,18 @@ def command(cmd):
                 for phone in result["phones"]:
                     wopen("tel:"+phone)
                 return "opening"
+
+            case "/sendfile":
+                if len(c) < 2:
+                    return "Usage: /sendfile <path>"
+                filepath = " ".join(c[1:])
+                if not os.path.exists(filepath):
+                    return f"File not found: {filepath}"
+                chunk_size = 128
+                print(f"Sending file {filepath}...")
+                for chunk in chunker.chunk(filepath, chunk_size):
+                    g.send(chunk)
+                return f"File {filepath} queued for sending."
 
             case "/stop":
                 g.stopcondition=True

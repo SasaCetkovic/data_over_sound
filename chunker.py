@@ -49,8 +49,10 @@ def dechunk(chunk_list):
         Result.Ok if successful, Result.Err with a list of indices that failed
     '''
 # delete all chunks that start with FEND$$$$ and $$$$FILE
-    chunk_list = [chunk for chunk in chunk_list if chunk[0:8] != b'FEND$$$$' and chunk[0:8] != b'$$$$FILE']
+    chunk_list = [chunk for chunk in chunk_list if not chunk.startswith(b'FEND$$$$') and not chunk.startswith(b'$$$$FILE')]
     # sort the chunks by index via the first 2 bytes of the chunk
+    if not chunk_list:
+        return Result.Err([])
     chunk_list.sort(key=lambda x: int.from_bytes(x[0:2], 'big'))
     num_chunks = int.from_bytes(chunk_list[0][2:4], 'big')
     file = bytearray()
