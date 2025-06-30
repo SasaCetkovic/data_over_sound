@@ -123,12 +123,19 @@ help = """
 def command(cmd):
     if not cmd.startswith("/"):
         # ggwave has a limit of ~140 bytes per message
-        if len(cmd.encode('utf-8')) > 140:
+        max_payload = g.get_max_payload_size()
+        if len(cmd.encode('utf-8')) > max_payload:
             print("Message is too long, sending as chunked text...")
-            chunk_size = 128
-            for chunk in chunker.chunk_text(cmd, chunk_size):
-                g.send(chunk)
-            return "Long message queued for sending."
+            # chunk header is 4 bytes (idx + num_chunks)
+            chunk_size = max_payload - 4
+            if chunk_size <= 0:
+                return "Payload size too small to chunk message."
+            try:
+                for chunk in chunker.chunk_text(cmd, chunk_size, max_payload):
+                    g.send(chunk)
+                return "Long message queued for sending."
+            except ValueError as e:
+                return str(e)
         else:
             g.send(cmd)
             return "sending"
@@ -172,11 +179,18 @@ def command(cmd):
                 filepath = " ".join(c[1:])
                 if not os.path.exists(filepath):
                     return f"File not found: {filepath}"
-                chunk_size = 128
+                max_payload = g.get_max_payload_size()
+                # chunk header is 4 bytes (idx + num_chunks)
+                chunk_size = max_payload - 4
+                if chunk_size <= 0:
+                    return "Payload size too small to chunk file."
                 print(f"Sending file {filepath}...")
-                for chunk in chunker.chunk(filepath, chunk_size):
-                    g.send(chunk)
-                return f"File {filepath} queued for sending."
+                try:
+                    for chunk in chunker.chunk(filepath, chunk_size, max_payload=max_payload):
+                        g.send(chunk)
+                    return f"File {filepath} queued for sending."
+                except ValueError as e:
+                    return str(e)
 
             case "/stop":
                 g.stopcondition=True

@@ -76,8 +76,15 @@ class GW:
         # switch instance to another protocol
         ggwave.free(self.instance)
         if leng is not None:
-            self.pars["payloadLength"] = leng
+            if leng == -1:
+                if 'payloadLength' in self.pars:
+                    del self.pars['payloadLength']
+            else:
+                self.pars["payloadLength"] = leng
         self.instance = ggwave.init(self.pars)
+
+    def get_max_payload_size(self):
+        return self.pars.get("payloadLength", 140)
 
     def __del__(self):
         ggwave.free(self.instance)

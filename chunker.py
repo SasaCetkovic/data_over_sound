@@ -23,7 +23,7 @@ def chunk_by_idx(file, chunk_size, chunk_idcs=None):
             yield i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + f.read(chunk_size)
 
 # lets make an optimized version that yields all chunks without specifying indices
-def chunk(file, chunk_size, called_from_chunk_by_idx=False):
+def chunk(file, chunk_size, called_from_chunk_by_idx=False, max_payload=140):
     file_size = os.path.getsize(file)
     num_chunks = ceil(file_size / chunk_size)
     # if not called from chunk_by_idx, yield the metadata
@@ -31,16 +31,34 @@ def chunk(file, chunk_size, called_from_chunk_by_idx=False):
     if not called_from_chunk_by_idx:
         filename = os.path.basename(file)
         filename_bytes = filename.encode("utf-8") if isinstance(filename, str) else filename
-        yield b'$$$$FILE' + file_size.to_bytes(4, 'big') + filename_bytes  # well, if only filename won't be longer than chunksize-12!
+        
+        header = b'$$$$FILE' + file_size.to_bytes(4, 'big')
+        available_for_filename = max_payload - len(header)
+        if available_for_filename < 0:
+            raise ValueError(f"Cannot send file, metadata packet is too large for payload size {max_payload}")
+        
+        if len(filename_bytes) > available_for_filename:
+            # truncate filename
+            filename_bytes = filename_bytes[:available_for_filename]
+
+        yield header + filename_bytes
     with open(file, 'rb') as f:
-        for i, chunk in enumerate(iter(lambda: f.read(chunk_size), b'')): # read until EOF
-            yield i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk  # don't think that a chunk index will ever be >65536, or it will transfer a file for >1 week
+        for i, chunk_data in enumerate(iter(lambda: f.read(chunk_size), b'')): # read until EOF
+            chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
+            if len(chunk) > max_payload:
+                # This should not happen with correct chunk_size calculation in main.py
+                # but as a safeguard:
+                raise ValueError(f"Data chunk is too large for payload size {max_payload}")
+            yield chunk
     # if not called from chunk_by_idx, yield the FEND$$$$ footer to not make the receiver wait 30 seconds for the next chunk
     if not called_from_chunk_by_idx:
-        yield b'FEND$$$$'
+        footer = b'FEND$$$$'
+        if len(footer) > max_payload:
+            raise ValueError(f"Cannot send file, footer packet is too large for payload size {max_payload}")
+        yield footer
 
 
-def chunk_text(text: str, chunk_size: int):
+def chunk_text(text: str, chunk_size: int, max_payload: int):
     """
     chunks a string into chunks for a data-over-sound transmitter
     """
@@ -48,13 +66,24 @@ def chunk_text(text: str, chunk_size: int):
     text_size = len(text_bytes)
     num_chunks = ceil(text_size / chunk_size)
     
-    yield b'$$$$TEXT' + text_size.to_bytes(4, 'big')
+    header = b'$$$$TEXT' + text_size.to_bytes(4, 'big')
+    if len(header) > max_payload:
+        raise ValueError(f"Cannot send text, metadata packet is too large for payload size {max_payload}")
+    yield header
 
     for i in range(num_chunks):
         chunk_data = text_bytes[i*chunk_size : (i+1)*chunk_size]
-        yield i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
+        chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
+        if len(chunk) > max_payload:
+            # This should not happen with correct chunk_size calculation in main.py
+            # but as a safeguard:
+            raise ValueError(f"Data chunk is too large for payload size {max_payload}")
+        yield chunk
     
-    yield b'TEND$$$$'
+    footer = b'TEND$$$$'
+    if len(footer) > max_payload:
+        raise ValueError(f"Cannot send text, footer packet is too large for payload size {max_payload}")
+    yield footer
 
 
 def dechunk(chunk_list):
@@ -94,7 +123,7 @@ def test_chunker():
     with open('files/helloworld.txt', 'rb') as f:
         file_data = f.read()
     file = 'files/helloworld.txt'
-    chunks = list(chunk(file, chunk_size))
+    chunks = list(chunk(file, chunk_size, max_payload=140))
     print(len(chunks))
     match dechunk(chunks):
         case Result.Ok(data):
@@ -104,7 +133,7 @@ def test_chunker():
     
     # test chunk_text
     text = "hello world this is a long text to test chunking"
-    chunks = list(chunk_text(text, 10))
+    chunks = list(chunk_text(text, 10, 14))
     match dechunk(chunks):
         case Result.Ok(data):
             assert data == text.encode('utf-8')
