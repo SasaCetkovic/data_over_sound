@@ -12,6 +12,9 @@ class Output:
         self.file_chunks = []
         self.file_name = ""
         self.file_size = 0
+        self.receiving_text = False
+        self.text_chunks = []
+        self.text_size = 0
 
     def data_callback(self, data):
         if isinstance(data, bytes):
@@ -57,6 +60,42 @@ class Output:
                     print("Received malformed chunk.")
                 return
 
+            if data.startswith(b'$$$$TEXT'):
+                self.receiving_text = True
+                self.text_chunks = []
+                try:
+                    self.text_size = int.from_bytes(data[8:12], 'big')
+                    print(f"Receiving text ({self.text_size} bytes)")
+                except Exception as e:
+                    print(f"Error parsing text header: {e}")
+                    self.receiving_text = False
+                return
+
+            if data.startswith(b'TEND$$$$'):
+                if not self.receiving_text:
+                    return # ignore stray TEND
+                print("Text transfer finished.")
+                self.receiving_text = False
+                
+                match chunker.dechunk(self.text_chunks):
+                    case chunker.Result.Ok(text_data):
+                        print("Received text:")
+                        print(text_data.decode('utf-8', errors='ignore'))
+                    case chunker.Result.Err(failed):
+                        print(f"Text reconstruction failed. Missing chunks: {failed}")
+                self.text_chunks = []
+                return
+
+            if self.receiving_text:
+                self.text_chunks.append(data)
+                try:
+                    num_chunks = int.from_bytes(data[2:4], 'big')
+                    chunk_idx = int.from_bytes(data[0:2], 'big')
+                    print(f"Received text chunk {chunk_idx + 1}/{num_chunks}")
+                except (IndexError, ValueError):
+                    print("Received malformed text chunk.")
+                return
+
         # If not file data, treat as regular message
         self.data = str(data)
         print(self.data)
@@ -83,8 +122,16 @@ help = """
 
 def command(cmd):
     if not cmd.startswith("/"):
-        g.send(cmd)
-        return "sending"
+        # ggwave has a limit of ~140 bytes per message
+        if len(cmd.encode('utf-8')) > 140:
+            print("Message is too long, sending as chunked text...")
+            chunk_size = 128
+            for chunk in chunker.chunk_text(cmd, chunk_size):
+                g.send(chunk)
+            return "Long message queued for sending."
+        else:
+            g.send(cmd)
+            return "sending"
     c=cmd.split(" ")
     try:
         match c[0]:

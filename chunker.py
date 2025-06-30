@@ -38,6 +38,23 @@ def chunk(file, chunk_size, called_from_chunk_by_idx=False):
         yield b'FEND$$$$'
 
 
+def chunk_text(text: str, chunk_size: int):
+    """
+    chunks a string into chunks for a data-over-sound transmitter
+    """
+    text_bytes = text.encode('utf-8')
+    text_size = len(text_bytes)
+    num_chunks = ceil(text_size / chunk_size)
+    
+    yield b'$$$$TEXT' + text_size.to_bytes(4, 'big')
+
+    for i in range(num_chunks):
+        chunk_data = text_bytes[i*chunk_size : (i+1)*chunk_size]
+        yield i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
+    
+    yield b'TEND$$$$'
+
+
 def dechunk(chunk_list):
     '''
     dechunks a list of chunks into a file
@@ -48,8 +65,8 @@ def dechunk(chunk_list):
     returns:
         Result.Ok if successful, Result.Err with a list of indices that failed
     '''
-# delete all chunks that start with FEND$$$$ and $$$$FILE
-    chunk_list = [chunk for chunk in chunk_list if not chunk.startswith(b'FEND$$$$') and not chunk.startswith(b'$$$$FILE')]
+# delete all chunks that are start/end markers for file or text transfers
+    chunk_list = [chunk for chunk in chunk_list if not chunk.startswith(b'FEND$$$$') and not chunk.startswith(b'$$$$FILE') and not chunk.startswith(b'TEND$$$$') and not chunk.startswith(b'$$$$TEXT')]
     # sort the chunks by index via the first 2 bytes of the chunk
     if not chunk_list:
         return Result.Err([])
@@ -82,6 +99,16 @@ def test_chunker():
             assert data == file_data
         case Result.Err(failed):
             assert False, f"Failed chunks: {failed}"
+    
+    # test chunk_text
+    text = "hello world this is a long text to test chunking"
+    chunks = list(chunk_text(text, 10))
+    match dechunk(chunks):
+        case Result.Ok(data):
+            assert data == text.encode('utf-8')
+        case Result.Err(failed):
+            assert False, f"Failed chunks: {failed}"
+
     # lets now break the chunks, miss second and fourth chunk
     chunks.pop(4)
     chunks.pop(2)  # what fool was i, before i popped 2 and 4, and the 4th moved to 3rd place!!!
