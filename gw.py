@@ -49,6 +49,10 @@ class GW:
         outdata[:] = 0  # if there is no data to send, send zeros
         res = ggwave.decode(self.instance, bytes(indata))
         if res is not None:
+            # The ggwave library returns a null-terminated payload. The Python
+            # wrapper includes this null byte, so we strip it.
+            if res.endswith(b'\x00'):
+                res = res[:-1]
             self.q.put(res)
             self.callback_function(res)
 
