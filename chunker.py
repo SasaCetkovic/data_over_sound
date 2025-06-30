@@ -4,6 +4,7 @@
 from rust_enum import enum, Case
 import os  # .path.getsize
 from math import ceil
+import base64
 
 @enum
 class Result:
@@ -30,7 +31,8 @@ def chunk(file, chunk_size, max_payload=140):
     yield header + filename_bytes
     with open(file, 'rb') as f:
         for i, chunk_data in enumerate(iter(lambda: f.read(chunk_size), b'')): # read until EOF
-            chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
+            encoded_data = base64.b64encode(chunk_data)
+            chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + encoded_data
             if len(chunk) > max_payload:
                 # This should not happen with correct chunk_size calculation in main.py
                 # but as a safeguard:
@@ -58,7 +60,8 @@ def chunk_text(text: str, chunk_size: int, max_payload: int):
 
     for i in range(num_chunks):
         chunk_data = text_bytes[i*chunk_size : (i+1)*chunk_size]
-        chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + chunk_data
+        encoded_data = base64.b64encode(chunk_data)
+        chunk = i.to_bytes(2, 'big') + num_chunks.to_bytes(2, 'big') + encoded_data
         if len(chunk) > max_payload:
             # This should not happen with correct chunk_size calculation in main.py
             # but as a safeguard:
@@ -93,11 +96,18 @@ def dechunk(chunk_list):
     failed = [i for i in range(num_chunks) if i not in chunk_idcs]
     if failed:
         return Result.Err(failed)
-    for i, chunk in enumerate(chunk_list):
-        chunk_idx = int.from_bytes(chunk[0:2], 'big')
-        # remove the chunk index
+    
+    for chunk in chunk_list:
+        # chunk is already sorted by index
         raw_chunk = chunk[4:]
-        file.extend(raw_chunk)
+        try:
+            decoded_chunk = base64.b64decode(raw_chunk)
+            file.extend(decoded_chunk)
+        except base64.binascii.Error:
+            # a corrupted chunk was received
+            corrupt_idx = int.from_bytes(chunk[0:2], 'big')
+            return Result.Err([corrupt_idx])
+
     return Result.Ok(file)
 
 

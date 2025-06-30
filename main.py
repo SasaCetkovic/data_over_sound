@@ -4,6 +4,7 @@ from webbrowser import open as wopen
 import os
 from sys import exit  # stupid pyinstaller bug, it doesn't work without this line
 import chunker
+import math
 
 class Output:
     def __init__(self):
@@ -134,13 +135,13 @@ def command(cmd):
         max_payload = g.get_max_payload_size()
         if len(cmd.encode('utf-8')) > max_payload:
             print("Message is too long, sending as chunked text...")
-            # chunk header is 4 bytes (idx + num_chunks)
-            chunk_size = max_payload - 4
+            # chunk header is 4 bytes (idx + num_chunks). Base64 overhead is 4/3.
+            chunk_size = math.floor((max_payload - 4) / 4) * 3
             if chunk_size <= 0:
                 return "Payload size too small to chunk message."
             try:
                 for chunk in chunker.chunk_text(cmd, chunk_size, max_payload):
-                    g.send(chunk)
+                    g.send(chunk.decode('latin-1'))
                 return "Long message queued for sending."
             except ValueError as e:
                 return str(e)
@@ -188,14 +189,14 @@ def command(cmd):
                 if not os.path.exists(filepath):
                     return f"File not found: {filepath}"
                 max_payload = g.get_max_payload_size()
-                # chunk header is 4 bytes (idx + num_chunks)
-                chunk_size = max_payload - 4
+                # chunk header is 4 bytes (idx + num_chunks). Base64 overhead is 4/3.
+                chunk_size = math.floor((max_payload - 4) / 4) * 3
                 if chunk_size <= 0:
                     return "Payload size too small to chunk file."
                 print(f"Sending file {filepath}...")
                 try:
                     for chunk in chunker.chunk(filepath, chunk_size, max_payload=max_payload):
-                        g.send(chunk)
+                        g.send(chunk.decode('latin-1'))
                     return f"File {filepath} queued for sending."
                 except ValueError as e:
                     return str(e)
