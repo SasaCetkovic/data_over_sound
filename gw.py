@@ -45,7 +45,18 @@ class GW:
         # if there is data to send, don't receive from the microphone
         if not self.sendqueue.empty():
             q = self.sendqueue.get()
-            outdata[:] = q.reshape(outdata.shape)
+            if len(q) == len(outdata):
+                outdata[:] = q.reshape(outdata.shape)
+            else:
+                # Handle mismatched sizes by padding with zeros or truncating
+                if len(q) < len(outdata):
+                    # Pad with zeros
+                    padded = np.zeros(len(outdata), dtype=np.float32)
+                    padded[:len(q)] = q
+                    outdata[:] = padded.reshape(outdata.shape)
+                else:
+                    # Truncate to fit
+                    outdata[:] = q[:len(outdata)].reshape(outdata.shape)
             return
         outdata[:] = 0  # if there is no data to send, send zeros
         res = ggwave.decode(self.instance, bytes(indata))
