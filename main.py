@@ -135,8 +135,8 @@ def command(cmd):
         max_payload = g.get_max_payload_size()
         if len(cmd.encode('utf-8')) > max_payload:
             print("Message is too long, sending as chunked text...")
-            # chunk header is 4 bytes (idx + num_chunks). Base64 overhead is 4/3.
-            chunk_size = math.floor((max_payload - 4) / 4) * 3
+            # chunk header is 4 bytes (idx + num_chunks).
+            chunk_size = max_payload - 4
             if chunk_size <= 0:
                 return "Payload size too small to chunk message."
             try:
@@ -189,8 +189,8 @@ def command(cmd):
                 if not os.path.exists(filepath):
                     return f"File not found: {filepath}"
                 max_payload = g.get_max_payload_size()
-                # chunk header is 4 bytes (idx + num_chunks). Base64 overhead is 4/3.
-                chunk_size = math.floor((max_payload - 4) / 4) * 3
+                # chunk header is 4 bytes (idx + num_chunks).
+                chunk_size = max_payload - 4
                 if chunk_size <= 0:
                     return "Payload size too small to chunk file."
                 print(f"Sending file {filepath}...")
