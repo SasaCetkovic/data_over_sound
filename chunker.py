@@ -49,9 +49,6 @@ def chunk_text(text: str, chunk_size: int, max_payload: int):
     """
     chunks a string into chunks for a data-over-sound transmitter
     """
-    if isinstance(text, bytes):
-        # This shouldn't happen, but as a safeguard...
-        text = text.decode('utf-8', errors='ignore')
     text_bytes = text.encode('utf-8')
     text_size = len(text_bytes)
     num_chunks = ceil(text_size / chunk_size)
