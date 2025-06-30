@@ -108,7 +108,7 @@ g=gw.GW(output.data_callback)
 g.start()
 
 help = """
-/p [protocol number] [payload length] - set protocol and payload length. payload length is optional and must be between 4 and 64. It is only required for protocols 9 to 11 but can be set for all protocols
+/p [protocol number] [payload length] - set protocol and payload length. payload length is optional and must be between 5 and 64. It is only required for protocols 9 to 11 but can be set for all protocols
 /reset - reset the instance. If data starts to get corrupted, this command can be used to reset the instance
 /open - open URLs, emails, and phone numbers in the default web browser, email client, and phone dialer respectively. Use this command if a url, email, or phone number is received. Use it on your own risk, as it may open malicious websites
 /sendfile <path> - send a file
@@ -151,8 +151,8 @@ def command(cmd):
                     if c[2]=="-":  # if the payload length is set to default
                         g.switchinstance(-1)
                         return toreturn
-                    if int(c[2])<4 or int(c[2])>64:
-                        return ("invalid payload length. it must be between 4 and 64")
+                    if int(c[2])<5 or int(c[2])>64:
+                        return ("invalid payload length. it must be between 5 and 64")
                     g.switchinstance(int(c[2]))
                     return toreturn+(" payload length "+str(c[2]))
                 else:  # if there is no payload length
