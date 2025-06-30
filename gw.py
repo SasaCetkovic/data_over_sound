@@ -21,9 +21,8 @@ class GW:
         self.callback_function = callback_function
         self.protocol = 2
         self.pars = ggwave.getDefaultParameters()
-        # For variable-length protocols, we can set payloadLength to a large value.
-        # The max seems to be 140.
-        self.pars['payloadLength'] = 140
+        # For variable-length protocols, payloadLength should be 0.
+        self.pars['payloadLength'] = 0
         for k, v in kwargs.items():
             self.pars[k] = v
         self.instance = ggwave.init(self.pars)
@@ -80,13 +79,16 @@ class GW:
         ggwave.free(self.instance)
         if leng is not None:
             if leng == -1:
-                self.pars['payloadLength'] = 140
+                self.pars['payloadLength'] = 0
             else:
                 self.pars["payloadLength"] = leng
         self.instance = ggwave.init(self.pars)
 
     def get_max_payload_size(self):
-        return self.pars.get("payloadLength", 140)
+        pl = self.pars.get("payloadLength", 0)
+        if pl == 0:
+            return 140
+        return pl
 
     def __del__(self):
         ggwave.free(self.instance)
