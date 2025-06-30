@@ -97,8 +97,16 @@ class Output:
                 return
 
         # If not file data, treat as regular message
-        self.data = str(data)
-        print(self.data)
+        try:
+            # data is always bytes here. Try to decode as a regular text message.
+            decoded_data = data.decode('utf-8').replace("\x00", "")
+            self.data = decoded_data
+            print(decoded_data)
+        except (UnicodeDecodeError, AttributeError):
+            # This can happen with noise or corrupted data.
+            # The original code did str(data), which would show b'...'.
+            # We'll just ignore it to keep the output clean.
+            self.data = ""
 
     def parse(self):
         return parse.extract_info(self.data)

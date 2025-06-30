@@ -49,7 +49,6 @@ class GW:
         outdata[:] = 0  # if there is no data to send, send zeros
         res = ggwave.decode(self.instance, bytes(indata))
         if res is not None:
-            res = try_to_utf8(res)
             self.q.put(res)
             self.callback_function(res)
 
@@ -66,8 +65,11 @@ class GW:
         self.stream.stop()
 
     def send(self, data):
+        to_send = data
+        if isinstance(data, bytes):
+            to_send = data.decode('latin-1')
         wf = np.frombuffer(
-            ggwave.encode(data, protocolId=self.protocol, instance=self.instance),
+            ggwave.encode(to_send, protocolId=self.protocol, instance=self.instance),
             dtype="float32",
         )
         # put the data in the queue but framesize by framesize
@@ -94,9 +96,3 @@ class GW:
         ggwave.free(self.instance)
 
 
-def try_to_utf8(val):
-    # try to decode bytes to utf-8
-    try:
-        return val.decode("UTF-8").replace("\x00", "")
-    except:
-        return val  # if it fails return the original value
