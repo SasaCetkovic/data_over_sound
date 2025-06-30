@@ -73,6 +73,18 @@ class GW:
         for i in range(0, len(wf), frames):
             self.sendqueue.put(wf[i : i + frames])
 
+    def send_many(self, data_list):
+        full_waveform = bytearray()
+        for data in data_list:
+            full_waveform.extend(
+                ggwave.encode(data, protocolId=self.protocol, instance=self.instance)
+            )
+        
+        wf = np.frombuffer(full_waveform, dtype="float32")
+        
+        for i in range(0, len(wf), frames):
+            self.sendqueue.put(wf[i : i + frames])
+
     def switchinstance(self, leng=-1):
         # switch instance to another protocol
         ggwave.free(self.instance)

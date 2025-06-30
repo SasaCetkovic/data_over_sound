@@ -26,18 +26,14 @@ def smartsplit(text):
 
 def make_wave(text, *args, **kwargs):  # args and kwargs are passed to ggwave.encode
     chunks = smartsplit(text)
-    pause = seg.silent(duration=300)
-    wave = seg.empty()
-    first = True
+    
+    full_waveform = bytearray()
     for chunk in chunks:
-        data = np.frombuffer(ggwave.encode(chunk, *args, **kwargs), dtype=np.float32)
-        data = (data * 32767).astype(np.int16)  # this worked for me
-        s = seg(data.tobytes(), frame_rate=48000, sample_width=2, channels=1)
-        if first:
-            first = False
-        else:
-            wave += pause
-        wave += s
+        full_waveform.extend(ggwave.encode(chunk, *args, **kwargs))
+
+    data = np.frombuffer(full_waveform, dtype=np.float32)
+    data = (data * 32767).astype(np.int16)
+    wave = seg(data.tobytes(), frame_rate=48000, sample_width=2, channels=1)
     return wave
 
 def make_wave_from_file(file, *args, **kwargs):

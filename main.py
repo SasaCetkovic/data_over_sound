@@ -140,8 +140,8 @@ def command(cmd):
             if chunk_size <= 0:
                 return "Payload size too small to chunk message."
             try:
-                for chunk in chunker.chunk_text(cmd, chunk_size, max_payload):
-                    g.send(chunk.decode('latin-1'))
+                chunks = list(chunker.chunk_text(cmd, chunk_size, max_payload))
+                g.send_many(chunks)
                 return "Long message queued for sending."
             except ValueError as e:
                 return str(e)
@@ -195,8 +195,8 @@ def command(cmd):
                     return "Payload size too small to chunk file."
                 print(f"Sending file {filepath}...")
                 try:
-                    for chunk in chunker.chunk(filepath, chunk_size, max_payload=max_payload):
-                        g.send(chunk.decode('latin-1'))
+                    chunks = list(chunker.chunk(filepath, chunk_size, max_payload=max_payload))
+                    g.send_many(chunks)
                     return f"File {filepath} queued for sending."
                 except ValueError as e:
                     return str(e)
