@@ -6,7 +6,7 @@ import sounddevice as sd
 devs = [-1, -1]
 s = sd.query_devices()
 start_idx = 0
-samplerate = 44100
+samplerate = 48000
 amplitude = 0.2
 frequency = 440
 

@@ -94,7 +94,7 @@ class GW:
         full_waveform = bytearray()
         gap_samples = int(rate * gap_ms / 1000)  # Convert ms to samples
         silence = np.zeros(gap_samples, dtype=np.float32).tobytes()
-        
+
         for i, data in enumerate(data_list):
             # ggwave.encode seems to require a string.
             # Footers are sent as plain text.
@@ -108,13 +108,13 @@ class GW:
             full_waveform.extend(
                 ggwave.encode(payload, protocolId=self.protocol, instance=self.instance)
             )
-            
+
             # Add gap between chunks (except after the last one)
             if i < len(data_list) - 1:
                 full_waveform.extend(silence)
-        
+
         wf = np.frombuffer(full_waveform, dtype="float32")
-        
+
         for i in range(0, len(wf), frames):
             self.sendqueue.put(wf[i : i + frames])
 
@@ -136,5 +136,3 @@ class GW:
 
     def __del__(self):
         ggwave.free(self.instance)
-
-
