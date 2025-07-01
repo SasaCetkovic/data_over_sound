@@ -42,6 +42,10 @@ class GW:
     def callback(self, indata, outdata, frames, time, status):
         if self.stopcondition:
             self.stopcondition = False
+        
+        # Always clear output first
+        outdata[:] = 0
+        
         # if there is data to send, don't receive from the microphone
         if not self.sendqueue.empty():
             q = self.sendqueue.get()
@@ -58,7 +62,8 @@ class GW:
                     # Truncate to fit
                     outdata[:] = q[:len(outdata)].reshape(outdata.shape)
             return
-        outdata[:] = 0  # if there is no data to send, send zeros
+        
+        # Only try to decode if we're not sending
         res = ggwave.decode(self.instance, bytes(indata))
         if res is not None:
             # The ggwave library returns a null-terminated payload. The Python
@@ -85,15 +90,28 @@ class GW:
             ggwave.encode(data, protocolId=self.protocol, instance=self.instance),
             dtype="float32",
         )
+        # Add small silence before and after single messages for better detection
+        silence_samples = int(rate * 0.05)  # 50ms silence
+        silence = np.zeros(silence_samples, dtype=np.float32)
+        
+        # Prepend and append silence
+        full_wf = np.concatenate([silence, wf, silence])
+        
         # put the data in the queue but framesize by framesize
-        for i in range(0, len(wf), frames):
-            self.sendqueue.put(wf[i : i + frames])
+        for i in range(0, len(full_wf), frames):
+            self.sendqueue.put(full_wf[i : i + frames])
 
-    def send_many(self, data_list, gap_ms=100):
-        """Send multiple data packets with optional gaps between them for better reliability"""
-        full_waveform = bytearray()
+    def send_many(self, data_list, gap_ms=200, chunk_delay_ms=500):
+        """Send multiple data packets with gaps and delays for better reliability"""
+        # Longer gaps for better chunk separation
         gap_samples = int(rate * gap_ms / 1000)  # Convert ms to samples
-        silence = np.zeros(gap_samples, dtype=np.float32).tobytes()
+        silence = np.zeros(gap_samples, dtype=np.float32)
+        
+        # Even longer delay between chunks for file transfers
+        chunk_delay_samples = int(rate * chunk_delay_ms / 1000)
+        chunk_silence = np.zeros(chunk_delay_samples, dtype=np.float32)
+
+        full_waveform = np.array([], dtype=np.float32)
 
         for i, data in enumerate(data_list):
             # ggwave.encode seems to require a string.
@@ -105,18 +123,30 @@ class GW:
             else:
                 payload = base64.b64encode(data).decode('ascii')
 
-            full_waveform.extend(
-                ggwave.encode(payload, protocolId=self.protocol, instance=self.instance)
+            wf_chunk = np.frombuffer(
+                ggwave.encode(payload, protocolId=self.protocol, instance=self.instance),
+                dtype="float32"
             )
+            
+            # Add the encoded chunk
+            full_waveform = np.concatenate([full_waveform, wf_chunk])
 
-            # Add gap between chunks (except after the last one)
+            # Add appropriate gap
             if i < len(data_list) - 1:
-                full_waveform.extend(silence)
+                # Use longer delay for data chunks, shorter for headers/footers
+                if data.startswith(b'$$$$') or data in (b'FEND$$$$', b'TEND$$$$'):
+                    full_waveform = np.concatenate([full_waveform, silence])
+                else:
+                    full_waveform = np.concatenate([full_waveform, chunk_silence])
 
-        wf = np.frombuffer(full_waveform, dtype="float32")
+        # Add silence at the beginning and end
+        start_silence = np.zeros(int(rate * 0.1), dtype=np.float32)  # 100ms
+        end_silence = np.zeros(int(rate * 0.2), dtype=np.float32)    # 200ms
+        full_waveform = np.concatenate([start_silence, full_waveform, end_silence])
 
-        for i in range(0, len(wf), frames):
-            self.sendqueue.put(wf[i : i + frames])
+        # Queue the waveform
+        for i in range(0, len(full_waveform), frames):
+            self.sendqueue.put(full_waveform[i : i + frames])
 
     def switchinstance(self, leng=-1):
         # switch instance to another protocol

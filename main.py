@@ -19,7 +19,7 @@ class Output:
         self.receiving_text = False
         self.text_chunks = []
         self.text_size = 0
-        self.transfer_timeout = 30  # seconds
+        self.transfer_timeout = 60  # seconds - increased for slower transfers
         self.last_chunk_time = None
         self.timeout_timer = None
 
@@ -189,6 +189,7 @@ def command(cmd):
                 return "Payload size too small to chunk message."
             try:
                 chunks = list(chunker.chunk_text(cmd, chunk_size, max_payload))
+                print(f"Sending text in {len(chunks)} chunks...")
                 g.send_many(chunks)
                 return "Long message queued for sending."
             except ValueError as e:
@@ -246,6 +247,7 @@ def command(cmd):
                 print(f"Sending file {filepath}...")
                 try:
                     chunks = list(chunker.chunk(filepath, chunk_size, max_payload=max_payload))
+                    print(f"Sending file in {len(chunks)} chunks...")
                     g.send_many(chunks)
                     return f"File {filepath} queued for sending."
                 except ValueError as e:
